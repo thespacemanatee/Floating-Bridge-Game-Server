@@ -1,5 +1,5 @@
 {
-  "name": "singaporean-bridge-server",
+  "name": "floating-bridge-game-server",
   "version": "1.0.0",
   "description": "Server for Singapore Bridge App",
   "main": "dist/index.js",
