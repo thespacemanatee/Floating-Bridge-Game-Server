@@ -4,7 +4,8 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import Pusher from "pusher";
 
-import { getUserColor } from "./utils/utils";
+import { getChannelUsers, getUserColor } from "./utils";
+import { assignHandsToPlayers, getValidHands } from "./models/deck";
 
 dotenv.config();
 
@@ -22,15 +23,19 @@ const pusher = new Pusher({
   useTLS: true,
 });
 
-app.get("/", (req, res) => {
+app.get("/", (_, res) => {
   res.send(`Hello world at port ${port}!`);
 });
 
 app.post("/pusher/auth", (req, res) => {
   let auth: Pusher.AuthResponse;
-  const { socket_id: socketId, channel_name: channelName, username } = req.body;
+  const {
+    socket_id: socketId,
+    channel_name: channelName,
+    username,
+    userId,
+  } = req.body;
   if (/^presence-/.test(channelName)) {
-    const userId = `user-${new Date().toISOString()}`;
     const presenceData = {
       user_id: userId,
       user_info: {
@@ -43,6 +48,25 @@ app.post("/pusher/auth", (req, res) => {
     auth = pusher.authenticate(socketId, channelName);
   }
   res.send(auth);
+});
+
+app.post("/game/init", async (req, _) => {
+  const { channelName } = req.body;
+  const users = await getChannelUsers(pusher, channelName);
+  const hands = getValidHands();
+  const events = [
+    {
+      channel: channelName,
+      name: "game-status-event",
+      data: { status: "started" },
+    },
+    {
+      channel: channelName,
+      name: "game-init-event",
+      data: { hands: assignHandsToPlayers(users, hands) },
+    },
+  ];
+  pusher.triggerBatch(events);
 });
 
 const port = process.env.PORT || 5000;
