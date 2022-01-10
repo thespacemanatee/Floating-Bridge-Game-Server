@@ -1,7 +1,8 @@
-import { groupBy } from "../utils";
+import { groupBy, parseCardTotalValue } from "../utils";
 
-type CardSuit = "c" | "d" | "h" | "s";
-type CardValue =
+export type CardSuit = "c" | "d" | "h" | "s";
+
+export type CardValue =
   | "2"
   | "3"
   | "4"
@@ -16,7 +17,7 @@ type CardValue =
   | "k"
   | "a";
 
-type Card = {
+export type Card = {
   suit: CardSuit;
   value: CardValue;
 };
@@ -109,6 +110,9 @@ export const getValidHands = () => {
     hands = getHands(deck);
     valid = allHandsValid(hands);
   }
+  hands.forEach((hand) => {
+    hand.sort((a, b) => parseCardTotalValue(a) - parseCardTotalValue(b));
+  });
   return hands;
 };
 

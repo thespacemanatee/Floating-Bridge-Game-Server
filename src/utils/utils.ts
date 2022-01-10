@@ -1,4 +1,5 @@
 import Pusher from "pusher";
+import { CardSuit, CardValue, Card } from "../models";
 
 const hashCode = (s: string) =>
   s.split("").reduce((a, b) => {
@@ -27,3 +28,34 @@ export const getChannelUsers = async (pusher: Pusher, channelName: string) => {
     return body.users;
   }
 };
+
+const parseCardSuit = (suit: CardSuit) => {
+  switch (suit) {
+    case "c":
+      return 10;
+    case "d":
+      return 100;
+    case "h":
+      return 1000;
+    case "s":
+      return 10000;
+  }
+};
+
+const parseCardValue = (value: CardValue) => {
+  switch (value) {
+    case "j":
+      return 11;
+    case "q":
+      return 12;
+    case "k":
+      return 13;
+    case "a":
+      return 14;
+    default:
+      return parseInt(value);
+  }
+};
+
+export const parseCardTotalValue = (card: Card) =>
+  parseCardSuit(card.suit) + parseCardValue(card.value);
