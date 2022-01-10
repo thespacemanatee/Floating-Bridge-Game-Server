@@ -51,7 +51,7 @@ app.post("/pusher/auth", (req, res) => {
 });
 
 app.post("/game/init", async (req, _) => {
-  const { channelName } = req.body;
+  const { channelName, userId } = req.body;
   const users = await getChannelUsers(pusher, channelName);
   const hands = getValidHands();
   const events = [
@@ -63,7 +63,10 @@ app.post("/game/init", async (req, _) => {
     {
       channel: channelName,
       name: "game-init-event",
-      data: { hands: assignHandsToPlayers(users, hands) },
+      data: {
+        startUserId: userId,
+        hands: assignHandsToPlayers(users, hands),
+      },
     },
   ];
   pusher.triggerBatch(events);
