@@ -72,5 +72,13 @@ app.post("/game/init", async (req, _) => {
   pusher.triggerBatch(events);
 });
 
+app.post("/game/turn", (req, _) => {
+  const { channelName, playCardPayload, currentPosition } = req.body;
+  pusher.trigger(channelName, "game-turn-event", {
+    playCardPayload,
+    nextPosition: (currentPosition + 1) % 4,
+  });
+});
+
 const port = process.env.PORT || 5000;
 app.listen(port);
