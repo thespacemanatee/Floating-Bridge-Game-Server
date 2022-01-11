@@ -6,7 +6,7 @@ import Pusher from "pusher";
 
 import { getChannelUsers, getUserColor } from "./utils";
 import { assignHandsToPlayers, getValidHands } from "./models/Deck";
-import { isBidding } from "./utils/utils";
+import { isBiddingOrWinningBid } from "./utils/utils";
 
 dotenv.config();
 
@@ -77,10 +77,12 @@ app.post("/game/init", async (req, _) => {
 app.post("/game/bid", (req, _) => {
   const { channelName, bid, bidSequence, currentPosition } = req.body;
   bidSequence.push(bid);
+  const { winningBid, isBidding } = isBiddingOrWinningBid(bidSequence);
   pusher.trigger(channelName, "game-bid-event", {
     bidSequence,
     nextPosition: (currentPosition + 1) % 4,
-    isBidding: isBidding(bidSequence),
+    isBidding,
+    winningBid,
   });
 });
 

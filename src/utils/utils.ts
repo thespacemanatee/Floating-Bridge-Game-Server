@@ -60,16 +60,16 @@ const parseCardValue = (value: CardValue) => {
 export const parseCardTotalValue = (card: Card) =>
   parseCardSuit(card.suit) + parseCardValue(card.value);
 
-export const isBidding = (bidSequence: any) => {
-  console.log(bidSequence);
+export const isBiddingOrWinningBid = (bidSequence: any) => {
   if (bidSequence.length >= 4) {
     const lastIndex = bidSequence.length - 1;
-    for (let i = lastIndex; i > lastIndex - 3; i--) {
+    const k = lastIndex - 3;
+    for (let i = lastIndex; i > k; i--) {
       if (bidSequence[i].suit || bidSequence[i].level) {
-        return true;
+        return { winningBid: null, isBidding: true };
       }
     }
-    return false;
+    return { winningBid: bidSequence[k], isBidding: false };
   }
-  return true;
+  return { winningBid: null, isBidding: true };
 };
