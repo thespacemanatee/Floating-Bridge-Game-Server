@@ -5,7 +5,7 @@ import cors from "cors";
 import Pusher from "pusher";
 
 import { getChannelUsers, getUserColor } from "./utils";
-import { assignHandsToPlayers, getValidHands } from "./models/deck";
+import { assignHandsToPlayers, getValidHands } from "./models/Deck";
 
 dotenv.config();
 
@@ -66,10 +66,31 @@ app.post("/game/init", async (req, _) => {
       data: {
         startUserId: userId,
         hands: assignHandsToPlayers(users, hands),
+        isBidding: true,
       },
     },
   ];
   pusher.triggerBatch(events);
+});
+
+app.post("/game/bid", (req, _) => {
+  const { channelName, bid, bidSequence, currentPosition } = req.body;
+  bidSequence.push(bid);
+  let isBidding = true;
+  if (bidSequence.length >= 4) {
+    const lastIndex = bidSequence.length - 1;
+    for (let i = lastIndex; i > lastIndex - 3; i--) {
+      if (bidSequence[i].suit || bidSequence[i].level) {
+        break;
+      }
+    }
+    isBidding = false;
+  }
+  pusher.trigger(channelName, "game-bid-event", {
+    bidSequence,
+    nextPosition: (currentPosition + 1) % 4,
+    isBidding,
+  });
 });
 
 app.post("/game/turn", (req, _) => {
