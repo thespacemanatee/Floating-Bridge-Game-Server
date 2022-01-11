@@ -1,1 +1,1 @@
-export { Card, CardSuit, CardValue } from "./Deck";
+export type { Card, CardSuit, CardValue } from "./Deck";
