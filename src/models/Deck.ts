@@ -1,43 +1,43 @@
-import { groupBy, parseCardTotalValue } from "../utils";
+import { groupBy, parseCardTotalValue } from '../utils';
 
-export type CardSuit = "c" | "d" | "h" | "s";
+export type CardSuit = 'c' | 'd' | 'h' | 's';
 
 export type CardValue =
-  | "2"
-  | "3"
-  | "4"
-  | "5"
-  | "6"
-  | "7"
-  | "8"
-  | "9"
-  | "10"
-  | "j"
-  | "q"
-  | "k"
-  | "a";
+  | '2'
+  | '3'
+  | '4'
+  | '5'
+  | '6'
+  | '7'
+  | '8'
+  | '9'
+  | '10'
+  | 'j'
+  | 'q'
+  | 'k'
+  | 'a';
 
 export type Card = {
   suit: CardSuit;
   value: CardValue;
 };
 
-const suits: CardSuit[] = ["c", "d", "h", "s"];
+const suits: CardSuit[] = ['c', 'd', 'h', 's'];
 
 const values: CardValue[] = [
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  "10",
-  "j",
-  "q",
-  "k",
-  "a",
+  '2',
+  '3',
+  '4',
+  '5',
+  '6',
+  '7',
+  '8',
+  '9',
+  '10',
+  'j',
+  'q',
+  'k',
+  'a',
 ];
 
 const getDeck = () => {
@@ -63,21 +63,21 @@ const isValidHand = (hand: Card[]) => {
   let points = 0;
   hand.forEach((card) => {
     switch (card.value) {
-      case "a": {
+      case 'a': {
         points += 4;
       }
-      case "k": {
+      case 'k': {
         points += 3;
       }
-      case "q": {
+      case 'q': {
         points += 2;
       }
-      case "j": {
+      case 'j': {
         points += 1;
       }
     }
   });
-  Object.values(groupBy(hand, "suit")).forEach((suit: Card[]) => {
+  Object.values(groupBy(hand, 'suit')).forEach((suit: Card[]) => {
     if (suit.length >= 5) points += 1;
   });
   return points >= 4;

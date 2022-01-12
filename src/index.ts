@@ -51,7 +51,7 @@ app.post('/pusher/auth', (req, res) => {
   res.send(auth);
 });
 
-app.post('/game/init', async (req, _) => {
+app.post('/game/init', async (req) => {
   const { channelName, userId } = req.body;
   const users = await getChannelUsers(pusher, channelName);
   const hands = getValidHands();
@@ -74,7 +74,7 @@ app.post('/game/init', async (req, _) => {
   pusher.triggerBatch(events);
 });
 
-app.post('/game/bid', (req, _) => {
+app.post('/game/bid', (req) => {
   const { channelName, bid, bidSequence, currentPosition } = req.body;
   bidSequence.push(bid);
   const { winningBid, isBidding } = isBiddingOrWinningBid(bidSequence);
@@ -86,7 +86,7 @@ app.post('/game/bid', (req, _) => {
   });
 });
 
-app.post('/game/turn', (req, _) => {
+app.post('/game/turn', (req) => {
   const { channelName, playCardPayload, currentPosition } = req.body;
   pusher.trigger(channelName, 'game-turn-event', {
     playCardPayload,

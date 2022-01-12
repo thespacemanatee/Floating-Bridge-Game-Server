@@ -7,12 +7,16 @@ module.exports = {
     'airbnb-base',
     'airbnb-typescript/base',
     'plugin:import/typescript',
+    'plugin:prettier/recommended',
   ],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 13,
     sourceType: 'module',
+    project: './tsconfig.json',
   },
   plugins: ['@typescript-eslint'],
-  rules: {},
+  rules: {
+    'object-curly-newline': 'off',
+  },
 };
