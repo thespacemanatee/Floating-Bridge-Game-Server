@@ -18,5 +18,6 @@ module.exports = {
   plugins: ['@typescript-eslint'],
   rules: {
     'object-curly-newline': 'off',
+    'import/prefer-default-export': 0,
   },
 };
