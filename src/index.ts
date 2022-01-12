@@ -1,16 +1,16 @@
-import dotenv from "dotenv";
-import express from "express";
-import bodyParser from "body-parser";
-import cors from "cors";
-import Pusher from "pusher";
+import dotenv from 'dotenv';
+import express from 'express';
+import bodyParser from 'body-parser';
+import cors from 'cors';
+import Pusher from 'pusher';
 
-import { getChannelUsers, getUserColor } from "./utils";
-import { assignHandsToPlayers, getValidHands } from "./models/Deck";
-import { isBiddingOrWinningBid } from "./utils/utils";
+import { getChannelUsers, getUserColor, isBiddingOrWinningBid } from './utils';
+import { assignHandsToPlayers, getValidHands } from './models/Deck';
 
 dotenv.config();
 
 const app = express();
+const port = process.env.PORT || 5000;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -24,11 +24,11 @@ const pusher = new Pusher({
   useTLS: true,
 });
 
-app.get("/", (_, res) => {
+app.get('/', (_, res) => {
   res.send(`Hello world at port ${port}!`);
 });
 
-app.post("/pusher/auth", (req, res) => {
+app.post('/pusher/auth', (req, res) => {
   let auth: Pusher.AuthResponse;
   const {
     socket_id: socketId,
@@ -51,19 +51,19 @@ app.post("/pusher/auth", (req, res) => {
   res.send(auth);
 });
 
-app.post("/game/init", async (req, _) => {
+app.post('/game/init', async (req, _) => {
   const { channelName, userId } = req.body;
   const users = await getChannelUsers(pusher, channelName);
   const hands = getValidHands();
   const events = [
     {
       channel: channelName,
-      name: "game-status-event",
-      data: { status: "started" },
+      name: 'game-status-event',
+      data: { status: 'started' },
     },
     {
       channel: channelName,
-      name: "game-init-event",
+      name: 'game-init-event',
       data: {
         startUserId: userId,
         hands: assignHandsToPlayers(users, hands),
@@ -74,11 +74,11 @@ app.post("/game/init", async (req, _) => {
   pusher.triggerBatch(events);
 });
 
-app.post("/game/bid", (req, _) => {
+app.post('/game/bid', (req, _) => {
   const { channelName, bid, bidSequence, currentPosition } = req.body;
   bidSequence.push(bid);
   const { winningBid, isBidding } = isBiddingOrWinningBid(bidSequence);
-  pusher.trigger(channelName, "game-bid-event", {
+  pusher.trigger(channelName, 'game-bid-event', {
     bidSequence,
     nextPosition: (currentPosition + 1) % 4,
     isBidding,
@@ -86,13 +86,12 @@ app.post("/game/bid", (req, _) => {
   });
 });
 
-app.post("/game/turn", (req, _) => {
+app.post('/game/turn', (req, _) => {
   const { channelName, playCardPayload, currentPosition } = req.body;
-  pusher.trigger(channelName, "game-turn-event", {
+  pusher.trigger(channelName, 'game-turn-event', {
     playCardPayload,
     nextPosition: (currentPosition + 1) % 4,
   });
 });
 
-const port = process.env.PORT || 5000;
 app.listen(port);
