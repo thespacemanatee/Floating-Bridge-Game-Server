@@ -1,14 +1,15 @@
-import Pusher from "pusher";
-import { CardSuit, CardValue, Card } from "../models";
+/* eslint-disable no-bitwise */
+import Pusher from 'pusher';
+import { CardSuit, CardValue, Card, Bid } from '../models';
 
 const hashCode = (s: string) =>
-  s.split("").reduce((a, b) => {
-    a = (a << 5) - a + b.charCodeAt(0);
-    return a & a;
+  s.split('').reduce((a, b) => {
+    const c = (a << 5) - a + b.charCodeAt(0);
+    return c & c;
   }, 0);
 
 export const getUserColor = (id: string) =>
-  "hsl(" + (hashCode(id) % 360) + ",70%,60%)";
+  `hsl(${hashCode(id) % 360},70%,60%)`;
 
 export const groupBy = (items: any, key: any) =>
   items.reduce(
@@ -27,45 +28,48 @@ export const getChannelUsers = async (pusher: Pusher, channelName: string) => {
     const body: any = await res.json();
     return body.users;
   }
+  return null;
 };
 
 const parseCardSuit = (suit: CardSuit) => {
   switch (suit) {
-    case "c":
+    case 'c':
       return 10;
-    case "d":
+    case 'd':
       return 100;
-    case "h":
+    case 'h':
       return 1000;
-    case "s":
+    case 's':
       return 10000;
+    default:
+      return 0;
   }
 };
 
 const parseCardValue = (value: CardValue) => {
   switch (value) {
-    case "j":
+    case 'j':
       return 11;
-    case "q":
+    case 'q':
       return 12;
-    case "k":
+    case 'k':
       return 13;
-    case "a":
+    case 'a':
       return 14;
     default:
-      return parseInt(value);
+      return parseInt(value, 10);
   }
 };
 
 export const parseCardTotalValue = (card: Card) =>
   parseCardSuit(card.suit) + parseCardValue(card.value);
 
-export const isBiddingOrWinningBid = (bidSequence: any) => {
+export const isBiddingOrWinningBid = (bidSequence: Bid[]) => {
   if (bidSequence.length >= 4) {
     const lastIndex = bidSequence.length - 1;
     const k = lastIndex - 3;
-    for (let i = lastIndex; i > k; i--) {
-      if (bidSequence[i].suit || bidSequence[i].level) {
+    for (let i = lastIndex; i > k; i -= 1) {
+      if (bidSequence[i]?.suit || bidSequence[i]?.level) {
         return { winningBid: null, isBidding: true };
       }
     }

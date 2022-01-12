@@ -3,4 +3,5 @@ export {
   groupBy,
   getChannelUsers,
   parseCardTotalValue,
-} from "./utils";
+  isBiddingOrWinningBid,
+} from './utils';
