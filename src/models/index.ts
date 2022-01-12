@@ -1,1 +1,2 @@
-export type { Card, CardSuit, CardValue } from './Deck';
+export type { Card, PlayedCard, CardSuit, CardValue } from './Deck';
+export { Game } from './Game';

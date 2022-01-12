@@ -12,7 +12,7 @@ export const pusher = new Pusher({
 
 export const pusherRouter = express.Router();
 
-pusherRouter.route('/pusher/auth').post((req, res) => {
+pusherRouter.route('/auth').post((req, res) => {
   let auth: Pusher.AuthResponse;
   const {
     socket_id: socketId,

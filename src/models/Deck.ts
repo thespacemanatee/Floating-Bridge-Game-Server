@@ -22,6 +22,10 @@ export type Card = {
   value: CardValue;
 };
 
+export interface PlayedCard extends Card {
+  playedBy: string;
+}
+
 const suits: CardSuit[] = ['c', 'd', 'h', 's'];
 
 const values: CardValue[] = [
@@ -130,7 +134,7 @@ export const assignHandsToPlayers = (
   hands: Card[][]
 ) => {
   return hands.map((hand, idx) => ({
-    id: users[idx].id,
+    userId: users[idx].id,
     hand,
   }));
 };
