@@ -5,7 +5,7 @@ import { getChannelUsers, isBiddingOrWinningBid } from '../utils';
 
 export const gameRouter = express.Router();
 
-gameRouter.route('game/init').post(async (req) => {
+gameRouter.route('/game/init').post(async (req) => {
   const { channelName, userId } = req.body;
   const users = await getChannelUsers(pusher, channelName);
   const hands = getValidHands();
@@ -28,7 +28,7 @@ gameRouter.route('game/init').post(async (req) => {
   pusher.triggerBatch(events);
 });
 
-gameRouter.route('game/bid').post((req) => {
+gameRouter.route('/game/bid').post((req) => {
   const { channelName, bid, bidSequence, currentPosition } = req.body;
   bidSequence.push(bid);
   const { winningBid, isBidding } = isBiddingOrWinningBid(bidSequence);
@@ -40,7 +40,7 @@ gameRouter.route('game/bid').post((req) => {
   });
 });
 
-gameRouter.route('game/turn').post((req) => {
+gameRouter.route('/game/turn').post((req) => {
   const { channelName, playCardPayload, currentPosition } = req.body;
   pusher.trigger(channelName, 'game-turn-event', {
     playCardPayload,

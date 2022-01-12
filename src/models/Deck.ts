@@ -51,10 +51,12 @@ const getDeck = () => {
 };
 
 const shuffleDeck = (deck: Card[]) => {
-  for (let i = deck.length - 1; i > 0; i--) {
+  for (let i = deck.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * i);
     const temp = deck[i];
+    // eslint-disable-next-line no-param-reassign
     deck[i] = deck[j];
+    // eslint-disable-next-line no-param-reassign
     deck[j] = temp;
   }
 };
@@ -65,15 +67,22 @@ const isValidHand = (hand: Card[]) => {
     switch (card.value) {
       case 'a': {
         points += 4;
+        break;
       }
       case 'k': {
         points += 3;
+        break;
       }
       case 'q': {
         points += 2;
+        break;
       }
       case 'j': {
         points += 1;
+        break;
+      }
+      default: {
+        break;
       }
     }
   });
@@ -94,7 +103,7 @@ const allHandsValid = (hands: Card[][]) => {
 const getHands = (deck: Card[]) => {
   const hands: Card[][] = [[], [], [], []];
   for (let i = 0; i < deck.length; i += 4) {
-    for (let j = 0; j < 4; j++) {
+    for (let j = 0; j < 4; j += 1) {
       hands[j].push(deck[i + j]);
     }
   }
