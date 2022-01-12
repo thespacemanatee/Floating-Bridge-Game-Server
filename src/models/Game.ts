@@ -1,8 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { Card, PlayedCard } from '.';
 
-export type GameStatus = 'started' | 'stopped';
-
 export type GameHand = {
   userId: string;
   hand: Card[];
@@ -20,17 +18,17 @@ export type BidLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export type Bid = {
   userId: string;
-  suit?: TrumpSuit;
-  level?: BidLevel;
+  suit: TrumpSuit;
+  level: BidLevel;
 };
 
 export class Game {
   constructor(
     public roomId: string,
-    public status: GameStatus,
     public currentPosition: number,
     public trump: TrumpSuit,
     public level: BidLevel,
+    public latestBid: Bid | null,
     public bidSequence: Bid[],
     public isBidding: boolean,
     public hands: GameHand[],

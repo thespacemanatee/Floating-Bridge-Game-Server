@@ -1,6 +1,6 @@
 /* eslint-disable no-bitwise */
 import Pusher from 'pusher';
-import { CardSuit, CardValue, Card } from '../models';
+import { CardSuit, CardValue, Card, Bid } from '../models';
 
 const hashCode = (s: string) =>
   s.split('').reduce((a, b) => {
@@ -64,12 +64,12 @@ const parseCardValue = (value: CardValue) => {
 export const parseCardTotalValue = (card: Card) =>
   parseCardSuit(card.suit) + parseCardValue(card.value);
 
-export const isBiddingOrWinningBid = (bidSequence: any) => {
+export const isBiddingOrWinningBid = (bidSequence: Bid[]) => {
   if (bidSequence.length >= 4) {
     const lastIndex = bidSequence.length - 1;
     const k = lastIndex - 3;
     for (let i = lastIndex; i > k; i -= 1) {
-      if (bidSequence[i].suit || bidSequence[i].level) {
+      if (bidSequence[i]?.suit || bidSequence[i]?.level) {
         return { winningBid: null, isBidding: true };
       }
     }
