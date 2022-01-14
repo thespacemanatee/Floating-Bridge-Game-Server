@@ -4,8 +4,13 @@ import { ObjectId } from 'mongodb';
 import { pusher } from '.';
 import { Bid, Game } from '../models';
 import { collections } from '../services/database.service';
-import { assignHandsToPlayers, getValidHands } from '../models/Deck';
-import { getChannelUsers, isBiddingOrWinningBid } from '../utils';
+import {
+  assignHandsToPlayers,
+  CardSuit,
+  CardValue,
+  getValidHands,
+} from '../models/Deck';
+import { getChannelUsers, isBidding } from '../utils';
 
 export const gamesRouter = express.Router();
 
@@ -15,9 +20,10 @@ type InitPayload = {
 };
 
 gamesRouter.post('/init', async (req: Request, res: Response) => {
+  const { roomId, userId }: InitPayload = req.body;
+  const channelName = `presence-${roomId}`;
+
   try {
-    const { roomId, userId }: InitPayload = req.body;
-    const channelName = `presence-${roomId}`;
     const users = await getChannelUsers(pusher, channelName);
     const hands = getValidHands();
     const playerHands = assignHandsToPlayers(users, hands);
@@ -25,11 +31,11 @@ gamesRouter.post('/init', async (req: Request, res: Response) => {
     const newGame = new Game(
       roomId,
       startPos,
-      'c',
-      1,
       null,
       [],
       true,
+      null,
+      false,
       playerHands,
       []
     );
@@ -43,14 +49,16 @@ gamesRouter.post('/init', async (req: Request, res: Response) => {
         {
           channel: channelName,
           name: 'game-status-event',
-          data: { status: 'started' },
+          data: {
+            status: 'started',
+          },
         },
         {
           channel: channelName,
           name: 'game-init-event',
           data: {
             gameId: result.insertedId,
-            ...newGame,
+            gameData: newGame,
           },
         },
       ];
@@ -66,32 +74,33 @@ gamesRouter.post('/init', async (req: Request, res: Response) => {
 
 type BidPayload = {
   gameId: string;
-  bid: Bid | null;
+  bid: Bid;
 };
 
 gamesRouter.post('/bid', async (req: Request, res: Response) => {
+  const { gameId, bid }: BidPayload = req.body;
+  const query = { _id: new ObjectId(gameId) };
+
   try {
-    const { gameId, bid }: BidPayload = req.body;
-    const query = { _id: new ObjectId(gameId) };
     const game = (await collections.games.findOne(query)) as unknown as Game;
 
     if (game) {
-      const { roomId, bidSequence, currentPosition, hands } = game;
+      const { roomId, currentPosition, latestBid, bidSequence, hands } = game;
 
       bidSequence.push(bid);
-      const { winningBid, isBidding } = isBiddingOrWinningBid(bidSequence);
+      const bidding = isBidding(bidSequence);
 
-      const nextPosition = winningBid
-        ? (hands.findIndex((e) => e.userId === winningBid.userId) + 1) %
-          hands.length
-        : (currentPosition + 1) % 4;
+      const nextPosition = bidding
+        ? (currentPosition + 1) % hands.length
+        : (hands.findIndex((e) => e.userId === latestBid.userId) + 1) %
+          hands.length;
       const result = await collections.games.findOneAndUpdate(
         query,
         {
           $set: {
             currentPosition: nextPosition,
             bidSequence,
-            isBidding,
+            isBidding: bidding,
             ...(bid && { latestBid: bid }),
           },
         },
@@ -99,29 +108,88 @@ gamesRouter.post('/bid', async (req: Request, res: Response) => {
       );
       if (result) {
         const channelName = `presence-${roomId}`;
-        pusher.trigger(channelName, 'game-bid-event', {
+        pusher.trigger(channelName, 'game-turn-event', {
           gameData: result.value,
-          winningBid,
         });
       }
-      res.status(200).send(`Successfully updated game with id ${gameId}`);
+      res
+        .status(200)
+        .send(`Successfully updated bid for game with id ${gameId}`);
     } else {
       res.status(304).send(`Game with id: ${gameId} not updated`);
     }
   } catch (error) {
-    res
-      .status(404)
-      .send(`Unable to find matching document with id: ${req.params.id}`);
+    console.error(error);
+    res.status(400).send(error.message);
+  }
+});
+
+type PartnerPayload = {
+  gameId: string;
+  partner: {
+    suit: CardSuit;
+    value: CardValue;
+  };
+};
+
+gamesRouter.post('/partner', async (req: Request, res: Response) => {
+  const { gameId, partner }: PartnerPayload = req.body;
+  const query = { _id: new ObjectId(gameId) };
+
+  try {
+    const game = (await collections.games.findOne(query)) as unknown as Game;
+
+    if (game) {
+      const { roomId, hands } = game;
+      let partnerId: string;
+      hands.forEach((hand) => {
+        const isPartner = hand.hand.some((card) => {
+          return card.suit === partner.suit && card.value === partner.value;
+        });
+        if (isPartner) {
+          partnerId = hand.userId;
+        }
+      });
+
+      const result = await collections.games.findOneAndUpdate(
+        query,
+        {
+          $set: {
+            partner: {
+              userId: partnerId,
+              ...partner,
+            },
+            isPartnerChosen: true,
+          },
+        },
+        { returnDocument: 'after' }
+      );
+      if (result) {
+        const channelName = `presence-${roomId}`;
+        delete result.value.partner;
+        pusher.trigger(channelName, 'game-turn-event', {
+          gameData: result.value,
+        });
+      }
+      res
+        .status(200)
+        .send(`Successfully updated partner for game with id ${gameId}`);
+    } else {
+      res.status(304).send(`Game with id: ${gameId} not updated`);
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(400).send(error.message);
   }
 });
 
 gamesRouter.post('/turn', (req: Request) => {
-  const { roomId, playCardPayload, currentPosition } = req.body;
-  const channelName = `presence-${roomId}`;
-  pusher.trigger(channelName, 'game-turn-event', {
-    playCardPayload,
-    nextPosition: (currentPosition + 1) % 4,
-  });
+  const { gameId, playCardPayload, currentPosition } = req.body;
+  // const channelName = `presence-${roomId}`;
+  // pusher.trigger(channelName, 'game-turn-event', {
+  //   playCardPayload,
+  //   nextPosition: (currentPosition + 1) % 4,
+  // });
 });
 
 gamesRouter.get('/', async (_req: Request, res: Response) => {
