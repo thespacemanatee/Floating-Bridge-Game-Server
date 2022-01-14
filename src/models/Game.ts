@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { Card, PlayedCard } from '.';
+import { Card, CardSuit, CardValue, PlayedCard } from '.';
 
 export type GameHand = {
   userId: string;
@@ -18,19 +18,25 @@ export type BidLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export type Bid = {
   userId: string;
-  suit: TrumpSuit;
+  trump: TrumpSuit;
   level: BidLevel;
+};
+
+export type Partner = {
+  userId: string;
+  suit: CardSuit;
+  value: CardValue;
 };
 
 export class Game {
   constructor(
     public roomId: string,
     public currentPosition: number,
-    public trump: TrumpSuit,
-    public level: BidLevel,
-    public latestBid: Bid | null,
+    public latestBid: Bid,
     public bidSequence: Bid[],
     public isBidding: boolean,
+    public partner: Partner,
+    public isPartnerChosen: boolean,
     public hands: GameHand[],
     public playedCards: PlayedCard[],
     public _id?: ObjectId
