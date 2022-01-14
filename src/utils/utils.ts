@@ -64,7 +64,7 @@ const parseCardValue = (value: CardValue) => {
 export const parseCardTotalValue = (card: Card) =>
   parseCardSuit(card.suit) + parseCardValue(card.value);
 
-export const isBiddingOrWinningBid = (bidSequence: Bid[]) => {
+export const isBidding = (bidSequence: Bid[]) => {
   if (bidSequence.length >= 4) {
     const lastIndex = bidSequence.length - 1;
     const k = lastIndex - 3;
@@ -73,6 +73,7 @@ export const isBiddingOrWinningBid = (bidSequence: Bid[]) => {
         return true;
       }
     }
+    return false;
   }
-  return false;
+  return true;
 };

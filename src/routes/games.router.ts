@@ -5,7 +5,7 @@ import { pusher } from '.';
 import { Bid, Game } from '../models';
 import { collections } from '../services/database.service';
 import { assignHandsToPlayers, getValidHands } from '../models/Deck';
-import { getChannelUsers, isBiddingOrWinningBid } from '../utils';
+import { getChannelUsers, isBidding } from '../utils';
 
 export const gamesRouter = express.Router();
 
@@ -15,9 +15,10 @@ type InitPayload = {
 };
 
 gamesRouter.post('/init', async (req: Request, res: Response) => {
+  const { roomId, userId }: InitPayload = req.body;
+  const channelName = `presence-${roomId}`;
+
   try {
-    const { roomId, userId }: InitPayload = req.body;
-    const channelName = `presence-${roomId}`;
     const users = await getChannelUsers(pusher, channelName);
     const hands = getValidHands();
     const playerHands = assignHandsToPlayers(users, hands);
@@ -72,17 +73,19 @@ type BidPayload = {
 };
 
 gamesRouter.post('/bid', async (req: Request, res: Response) => {
+  const { gameId, bid }: BidPayload = req.body;
+  const query = { _id: new ObjectId(gameId) };
+
   try {
-    const { gameId, bid }: BidPayload = req.body;
-    const query = { _id: new ObjectId(gameId) };
     const game = (await collections.games.findOne(query)) as unknown as Game;
 
     if (game) {
       const { roomId, currentPosition, latestBid, bidSequence, hands } = game;
 
       bidSequence.push(bid);
-      const isBidding = isBiddingOrWinningBid(bidSequence);
-      const nextPosition = isBidding
+      const bidding = isBidding(bidSequence);
+
+      const nextPosition = bidding
         ? (currentPosition + 1) % hands.length
         : (hands.findIndex((e) => e.userId === latestBid.userId) + 1) %
           hands.length;
@@ -91,8 +94,9 @@ gamesRouter.post('/bid', async (req: Request, res: Response) => {
         {
           $set: {
             currentPosition: nextPosition,
+            ...(bid && { trump: bid.suit, level: bid.level }),
             bidSequence,
-            isBidding,
+            isBidding: bidding,
             ...(bid && { latestBid: bid }),
           },
         },
@@ -109,9 +113,8 @@ gamesRouter.post('/bid', async (req: Request, res: Response) => {
       res.status(304).send(`Game with id: ${gameId} not updated`);
     }
   } catch (error) {
-    res
-      .status(404)
-      .send(`Unable to find matching document with id: ${req.params.id}`);
+    console.error(error);
+    res.status(400).send(error.message);
   }
 });
 
