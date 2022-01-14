@@ -2,35 +2,47 @@ import express, { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 
 import { pusher } from '.';
-import { Bid, Game } from '../models';
 import { collections } from '../services/database.service';
-import { assignHandsToPlayers, getValidHands } from '../models/Deck';
-import { getChannelUsers, isBiddingOrWinningBid } from '../utils';
+import {
+  Bid,
+  Game,
+  PlayCardPayload,
+  assignHandsToPlayers,
+  CardSuit,
+  CardValue,
+  getValidHands,
+  Card,
+  Player,
+  PlayedCard,
+} from '../models';
+import { getRoundWinner, isBidding } from '../utils';
 
 export const gamesRouter = express.Router();
 
 type InitPayload = {
   roomId: string;
   userId: string;
+  players: Player[];
 };
 
 gamesRouter.post('/init', async (req: Request, res: Response) => {
+  const { roomId, userId, players }: InitPayload = req.body;
+  const channelName = `presence-${roomId}`;
+
   try {
-    const { roomId, userId }: InitPayload = req.body;
-    const channelName = `presence-${roomId}`;
-    const users = await getChannelUsers(pusher, channelName);
     const hands = getValidHands();
-    const playerHands = assignHandsToPlayers(users, hands);
-    const startPos = playerHands.findIndex((e) => e.userId === userId);
+    const playersData = assignHandsToPlayers(players, hands);
+    const startPos = playersData.findIndex((e) => e.id === userId);
     const newGame = new Game(
       roomId,
+      playersData,
       startPos,
-      'c',
-      1,
       null,
       [],
       true,
-      playerHands,
+      null,
+      false,
+      false,
       []
     );
     const result = await collections.games.insertOne(newGame);
@@ -43,14 +55,16 @@ gamesRouter.post('/init', async (req: Request, res: Response) => {
         {
           channel: channelName,
           name: 'game-status-event',
-          data: { status: 'started' },
+          data: {
+            status: 'started',
+          },
         },
         {
           channel: channelName,
           name: 'game-init-event',
           data: {
             gameId: result.insertedId,
-            ...newGame,
+            gameData: newGame,
           },
         },
       ];
@@ -66,62 +80,200 @@ gamesRouter.post('/init', async (req: Request, res: Response) => {
 
 type BidPayload = {
   gameId: string;
-  bid: Bid | null;
+  bid: Bid;
 };
 
 gamesRouter.post('/bid', async (req: Request, res: Response) => {
+  const { gameId, bid }: BidPayload = req.body;
+  const query = { _id: new ObjectId(gameId) };
+
   try {
-    const { gameId, bid }: BidPayload = req.body;
-    const query = { _id: new ObjectId(gameId) };
     const game = (await collections.games.findOne(query)) as unknown as Game;
 
     if (game) {
-      const { roomId, bidSequence, currentPosition, hands } = game;
+      const { roomId, players, currentPosition, latestBid, bidSequence } = game;
 
       bidSequence.push(bid);
-      const { winningBid, isBidding } = isBiddingOrWinningBid(bidSequence);
+      const bidding = isBidding(bidSequence);
 
-      const nextPosition = winningBid
-        ? (hands.findIndex((e) => e.userId === winningBid.userId) + 1) %
-          hands.length
-        : (currentPosition + 1) % 4;
+      const nextPosition = bidding
+        ? (currentPosition + 1) % players.length
+        : (players.findIndex((e) => e.id === latestBid?.userId) + 1) %
+          players.length;
       const result = await collections.games.findOneAndUpdate(
         query,
         {
           $set: {
             currentPosition: nextPosition,
             bidSequence,
-            isBidding,
+            isBidding: bidding,
             ...(bid && { latestBid: bid }),
+            isTrumpBroken: latestBid?.trump === 'n',
           },
         },
         { returnDocument: 'after' }
       );
       if (result) {
         const channelName = `presence-${roomId}`;
-        pusher.trigger(channelName, 'game-bid-event', {
-          gameData: result.value,
-          winningBid,
+        const gameData = result.value as Game;
+        delete gameData.partner;
+        pusher.trigger(channelName, 'game-turn-event', {
+          gameData,
         });
       }
-      res.status(200).send(`Successfully updated game with id ${gameId}`);
+      res
+        .status(200)
+        .send(`Successfully updated bid for game with id ${gameId}`);
     } else {
       res.status(304).send(`Game with id: ${gameId} not updated`);
     }
   } catch (error) {
-    res
-      .status(404)
-      .send(`Unable to find matching document with id: ${req.params.id}`);
+    console.error(error);
+    res.status(400).send(error.message);
   }
 });
 
-gamesRouter.post('/turn', (req: Request) => {
-  const { roomId, playCardPayload, currentPosition } = req.body;
-  const channelName = `presence-${roomId}`;
-  pusher.trigger(channelName, 'game-turn-event', {
-    playCardPayload,
-    nextPosition: (currentPosition + 1) % 4,
-  });
+type PartnerPayload = {
+  gameId: string;
+  partner: {
+    suit: CardSuit;
+    value: CardValue;
+  };
+};
+
+gamesRouter.post('/partner', async (req: Request, res: Response) => {
+  const { gameId, partner }: PartnerPayload = req.body;
+  const query = { _id: new ObjectId(gameId) };
+
+  try {
+    const game = (await collections.games.findOne(query)) as unknown as Game;
+
+    if (game) {
+      const { roomId, players } = game;
+      let partnerId: string;
+      players.forEach((player) => {
+        const isPartner = player.hand.some((card) => {
+          return card.suit === partner.suit && card.value === partner.value;
+        });
+        if (isPartner) {
+          partnerId = player.id;
+        }
+      });
+
+      const result = await collections.games.findOneAndUpdate(
+        query,
+        {
+          $set: {
+            partner: {
+              userId: partnerId,
+              ...partner,
+            },
+            isPartnerChosen: true,
+          },
+        },
+        { returnDocument: 'after' }
+      );
+      if (result) {
+        const channelName = `presence-${roomId}`;
+        const gameData = result.value as Game;
+        delete gameData.partner;
+        pusher.trigger(channelName, 'game-turn-event', {
+          gameData,
+        });
+      }
+      res
+        .status(200)
+        .send(`Successfully updated partner for game with id ${gameId}`);
+    } else {
+      res.status(304).send(`Game with id: ${gameId} not updated`);
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(400).send(error.message);
+  }
+});
+
+type TurnPayload = {
+  gameId: string;
+  playCardPayload: PlayCardPayload;
+};
+
+gamesRouter.post('/turn', async (req: Request, res: Response) => {
+  const { gameId, playCardPayload }: TurnPayload = req.body;
+  const query = { _id: new ObjectId(gameId) };
+
+  try {
+    const game = (await collections.games.findOne(query)) as unknown as Game;
+
+    if (game) {
+      const {
+        roomId,
+        players,
+        currentPosition,
+        latestBid,
+        isTrumpBroken,
+        playedCards,
+      } = game;
+      const newIsTrumpBroken =
+        isTrumpBroken || latestBid.trump === playCardPayload.card.suit;
+      let playedCard: Card;
+      players.forEach((player) => {
+        if (player.id === playCardPayload.userId) {
+          [playedCard] = player.hand.splice(
+            player.hand.findIndex(
+              (card) =>
+                card.suit === playCardPayload.card.suit &&
+                card.value === playCardPayload.card.value
+            ),
+            1
+          );
+        }
+      });
+
+      let nextPosition = (currentPosition + 1) % players.length;
+      const playedCardData: PlayedCard = {
+        playedBy: playCardPayload.userId,
+        ...playedCard,
+      };
+      if (playedCards.push(playedCardData) === players.length) {
+        const userId = getRoundWinner(playedCards, latestBid.trump).playedBy;
+        nextPosition = players.findIndex((player) => player.id === userId);
+        players
+          .find((player) => player.id === userId)
+          .sets.push([...playedCards]);
+        playedCards.length = 0;
+      }
+      const result = await collections.games.findOneAndUpdate(
+        query,
+        {
+          $set: {
+            players,
+            currentPosition: nextPosition,
+            playedCards,
+            isTrumpBroken: newIsTrumpBroken,
+          },
+        },
+        { returnDocument: 'after' }
+      );
+      if (result) {
+        const channelName = `presence-${roomId}`;
+        // @ts-ignore
+        const gameData = result.value as Game;
+        delete gameData.partner;
+        pusher.trigger(channelName, 'game-turn-event', {
+          gameData,
+        });
+      }
+      res
+        .status(200)
+        .send(`Successfully updated partner for game with id ${gameId}`);
+    } else {
+      res.status(304).send(`Game with id: ${gameId} not updated`);
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(400).send(error.message);
+  }
 });
 
 gamesRouter.get('/', async (_req: Request, res: Response) => {
@@ -150,47 +302,5 @@ gamesRouter.get('/:id', async (req: Request, res: Response) => {
     res
       .status(404)
       .send(`Unable to find matching document with id: ${req.params.id}`);
-  }
-});
-
-gamesRouter.put('/:id', async (req: Request, res: Response) => {
-  const id = req?.params?.id;
-
-  try {
-    const updatedGame: Game = req.body;
-    const query = { _id: new ObjectId(id) };
-
-    const result = await collections.games.updateOne(query, {
-      $set: updatedGame,
-    });
-
-    if (result) {
-      res.status(200).send(`Successfully updated game with id ${id}`);
-    } else {
-      res.status(304).send(`Game with id: ${id} not updated`);
-    }
-  } catch (error) {
-    console.error(error.message);
-    res.status(400).send(error.message);
-  }
-});
-
-gamesRouter.delete('/:id', async (req: Request, res: Response) => {
-  const id = req.params?.id;
-
-  try {
-    const query = { _id: new ObjectId(id) };
-    const result = await collections.games.deleteOne(query);
-
-    if (result && result.deletedCount) {
-      res.status(202).send(`Successfully removed game with id ${id}`);
-    } else if (!result) {
-      res.status(400).send(`Failed to remove game with id ${id}`);
-    } else if (!result.deletedCount) {
-      res.status(404).send(`Game with id ${id} does not exist`);
-    }
-  } catch (error) {
-    console.error(error.message);
-    res.status(400).send(error.message);
   }
 });

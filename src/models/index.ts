@@ -1,10 +1,12 @@
+/* eslint-disable import/no-cycle */
 export type { Card, PlayedCard, CardSuit, CardValue } from './Deck';
-// eslint-disable-next-line import/no-cycle
+export { getValidHands, assignHandsToPlayers } from './Deck';
 export {
   Game,
-  GameHand,
   PlayCardPayload,
-  TrumpSuit,
+  Trump,
   BidLevel,
   Bid,
+  Partner,
+  Player,
 } from './Game';
