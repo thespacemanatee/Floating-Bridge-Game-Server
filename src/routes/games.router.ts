@@ -43,14 +43,16 @@ gamesRouter.post('/init', async (req: Request, res: Response) => {
         {
           channel: channelName,
           name: 'game-status-event',
-          data: { status: 'started' },
+          data: {
+            status: 'started',
+          },
         },
         {
           channel: channelName,
           name: 'game-init-event',
           data: {
             gameId: result.insertedId,
-            ...newGame,
+            gameData: newGame,
           },
         },
       ];
@@ -76,15 +78,14 @@ gamesRouter.post('/bid', async (req: Request, res: Response) => {
     const game = (await collections.games.findOne(query)) as unknown as Game;
 
     if (game) {
-      const { roomId, bidSequence, currentPosition, hands } = game;
+      const { roomId, currentPosition, latestBid, bidSequence, hands } = game;
 
       bidSequence.push(bid);
-      const { winningBid, isBidding } = isBiddingOrWinningBid(bidSequence);
-
-      const nextPosition = winningBid
-        ? (hands.findIndex((e) => e.userId === winningBid.userId) + 1) %
-          hands.length
-        : (currentPosition + 1) % 4;
+      const isBidding = isBiddingOrWinningBid(bidSequence);
+      const nextPosition = isBidding
+        ? (currentPosition + 1) % hands.length
+        : (hands.findIndex((e) => e.userId === latestBid.userId) + 1) %
+          hands.length;
       const result = await collections.games.findOneAndUpdate(
         query,
         {
@@ -101,7 +102,6 @@ gamesRouter.post('/bid', async (req: Request, res: Response) => {
         const channelName = `presence-${roomId}`;
         pusher.trigger(channelName, 'game-bid-event', {
           gameData: result.value,
-          winningBid,
         });
       }
       res.status(200).send(`Successfully updated game with id ${gameId}`);

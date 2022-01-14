@@ -69,11 +69,10 @@ export const isBiddingOrWinningBid = (bidSequence: Bid[]) => {
     const lastIndex = bidSequence.length - 1;
     const k = lastIndex - 3;
     for (let i = lastIndex; i > k; i -= 1) {
-      if (bidSequence[i]?.suit || bidSequence[i]?.level) {
-        return { winningBid: null, isBidding: true };
+      if (bidSequence[i]) {
+        return true;
       }
     }
-    return { winningBid: bidSequence[k], isBidding: false };
   }
-  return { winningBid: null, isBidding: true };
+  return false;
 };
