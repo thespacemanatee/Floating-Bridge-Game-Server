@@ -1,4 +1,6 @@
+import { Player } from '.';
 import { groupBy, parseCardTotalValue } from '../utils';
+import { PlayerData } from './Game';
 
 export type CardSuit = 'c' | 'd' | 'h' | 's';
 
@@ -130,11 +132,12 @@ export const getValidHands = () => {
 };
 
 export const assignHandsToPlayers = (
-  users: { id: string }[],
+  users: Player[],
   hands: Card[][]
-) => {
-  return hands.map((hand, idx) => ({
-    userId: users[idx].id,
-    hand,
+): PlayerData[] => {
+  return users.map((user, idx) => ({
+    ...user,
+    hand: hands[idx],
+    sets: [],
   }));
 };
