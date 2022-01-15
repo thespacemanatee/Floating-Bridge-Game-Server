@@ -39,12 +39,12 @@ export class Game {
   constructor(
     public roomId: string,
     public players: PlayerData[],
+    public roundNo: number,
     public currentPosition: number,
     public latestBid: Bid,
     public bidSequence: Bid[],
     public isBidding: boolean,
     public partner: Partner,
-    public isPartnerChosen: boolean,
     public isTrumpBroken: boolean,
     public playedCards: PlayedCard[],
     public _id?: ObjectId

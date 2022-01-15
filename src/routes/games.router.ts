@@ -36,12 +36,12 @@ gamesRouter.post('/init', async (req: Request, res: Response) => {
     const newGame = new Game(
       roomId,
       playersData,
+      0,
       startPos,
       null,
       [],
       true,
       null,
-      false,
       false,
       []
     );
@@ -116,7 +116,6 @@ gamesRouter.post('/bid', async (req: Request, res: Response) => {
       if (result) {
         const channelName = `presence-${roomId}`;
         const gameData = result.value as Game;
-        delete gameData.partner;
         pusher.trigger(channelName, 'game-turn-event', {
           gameData,
         });
@@ -152,9 +151,9 @@ gamesRouter.post('/partner', async (req: Request, res: Response) => {
       const { roomId, players } = game;
       let partnerId: string;
       players.forEach((player) => {
-        const isPartner = player.hand.some((card) => {
-          return card.suit === partner.suit && card.value === partner.value;
-        });
+        const isPartner = player.hand.some(
+          (card) => card.suit === partner.suit && card.value === partner.value
+        );
         if (isPartner) {
           partnerId = player.id;
         }
@@ -168,7 +167,6 @@ gamesRouter.post('/partner', async (req: Request, res: Response) => {
               userId: partnerId,
               ...partner,
             },
-            isPartnerChosen: true,
           },
         },
         { returnDocument: 'after' }
@@ -176,7 +174,6 @@ gamesRouter.post('/partner', async (req: Request, res: Response) => {
       if (result) {
         const channelName = `presence-${roomId}`;
         const gameData = result.value as Game;
-        delete gameData.partner;
         pusher.trigger(channelName, 'game-turn-event', {
           gameData,
         });
@@ -235,7 +232,9 @@ gamesRouter.post('/turn', async (req: Request, res: Response) => {
         playedBy: playCardPayload.userId,
         ...playedCard,
       };
+      let nextRound = false;
       if (playedCards.push(playedCardData) === players.length) {
+        nextRound = true;
         const userId = getRoundWinner(playedCards, latestBid.trump).playedBy;
         nextPosition = players.findIndex((player) => player.id === userId);
         players
@@ -252,14 +251,17 @@ gamesRouter.post('/turn', async (req: Request, res: Response) => {
             playedCards,
             isTrumpBroken: newIsTrumpBroken,
           },
+          ...(nextRound && {
+            $inc: {
+              roundNo: 1,
+            },
+          }),
         },
         { returnDocument: 'after' }
       );
       if (result) {
         const channelName = `presence-${roomId}`;
-        // @ts-ignore
         const gameData = result.value as Game;
-        delete gameData.partner;
         pusher.trigger(channelName, 'game-turn-event', {
           gameData,
         });
