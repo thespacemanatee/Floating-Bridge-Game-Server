@@ -20,7 +20,10 @@ export const groupBy = (items: any, key: any) =>
     {}
   );
 
-export const getChannelUsers = async (pusher: Pusher, channelName: string) => {
+export const getChannelUsers = async (
+  pusher: Pusher,
+  channelName: string
+): Promise<[{ id: string }]> => {
   const res = await pusher.get({
     path: `/channels/${channelName}/users`,
   });
