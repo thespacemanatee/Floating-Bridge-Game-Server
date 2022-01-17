@@ -111,7 +111,7 @@ gamesRouter.post('/:gameId', async (req: Request, res: Response) => {
         res.status(200).send(game);
       } else {
         res
-          .status(400)
+          .status(403)
           .send(
             `Existing game with id: ${req.params.id} found but invalid players.`
           );
@@ -161,7 +161,7 @@ gamesRouter.post('/resume/:gameId', async (req: Request, res: Response) => {
         res.status(200).send(game);
       } else {
         res
-          .status(400)
+          .status(403)
           .send(
             `Existing game with id: ${req.params.id} found but invalid players.`
           );
