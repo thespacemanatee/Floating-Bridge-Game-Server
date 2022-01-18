@@ -151,8 +151,9 @@ gamesRouter.post('/resume/:gameId', async (req: Request, res: Response) => {
           },
           {
             channel: channelName,
-            name: 'game-turn-event',
+            name: 'game-init-event',
             data: {
+              gameId,
               gameData: game,
             },
           },
