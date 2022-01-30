@@ -332,6 +332,9 @@ gamesRouter.post('/turn/:gameId', async (req: Request, res: Response) => {
         ...playedCard,
       };
       let nextRound = false;
+      if (playedCards.length === players.length) {
+        playedCards.length = 0;
+      }
       if (playedCards.push(playedCardData) === players.length) {
         nextRound = true;
         const userId = getRoundWinner(playedCards, latestBid.trump).playedBy;
@@ -339,7 +342,6 @@ gamesRouter.post('/turn/:gameId', async (req: Request, res: Response) => {
         players
           .find((player) => player.id === userId)
           .sets.push([...playedCards]);
-        playedCards.length = 0;
       }
       const result = await collections.games.findOneAndUpdate(
         query,
