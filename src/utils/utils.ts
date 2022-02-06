@@ -1,6 +1,14 @@
 /* eslint-disable no-bitwise */
 import Pusher from 'pusher';
-import { CardSuit, CardValue, Card, Bid, PlayedCard, Trump } from '../models';
+import {
+  CardSuit,
+  CardValue,
+  Card,
+  Bid,
+  PlayedCard,
+  Trump,
+  Player,
+} from '../models';
 
 const hashCode = (s: string) =>
   s.split('').reduce((a, b) => {
@@ -91,4 +99,18 @@ export const getRoundWinner = (playedCards: PlayedCard[], trump: Trump) => {
     return biggestTrump;
   }
   return sorted.filter((card) => card.suit === originalSuit).pop();
+};
+
+export const getDummyPlayers = () => {
+  const players: Player[] = [];
+  for (let i = 0; i < 4; i += 1) {
+    players.push({
+      id: i.toString(),
+      info: {
+        username: `player_${i.toString()}`,
+        color: '',
+      },
+    });
+  }
+  return players;
 };
