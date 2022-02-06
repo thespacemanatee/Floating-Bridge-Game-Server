@@ -5,4 +5,5 @@ export {
   parseCardTotalValue,
   isBidding,
   getRoundWinner,
+  getDummyPlayers,
 } from './utils';

@@ -15,7 +15,12 @@ import {
   Player,
   PlayedCard,
 } from '../models';
-import { getChannelUsers, getRoundWinner, isBidding } from '../utils';
+import {
+  getChannelUsers,
+  getDummyPlayers,
+  getRoundWinner,
+  isBidding,
+} from '../utils';
 
 export const gamesRouter = express.Router();
 
@@ -375,4 +380,10 @@ gamesRouter.post('/turn/:gameId', async (req: Request, res: Response) => {
     console.error(error);
     res.status(500).send(error.message);
   }
+});
+
+gamesRouter.get('/sandbox', async (req: Request, res: Response) => {
+  const hands = getValidHands();
+  const playersData = assignHandsToPlayers(getDummyPlayers(), hands);
+  res.status(200).send(playersData);
 });
