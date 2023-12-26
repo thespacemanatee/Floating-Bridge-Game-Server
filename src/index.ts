@@ -1,15 +1,15 @@
 /* eslint-disable import/first */
+import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
-import cors from 'cors';
 
 dotenv.config();
 
-import { pusherRouter, gamesRouter } from './routes';
+import { gamesRouter, pusherRouter } from './routes';
 import { connectToDatabase } from './services/database.service';
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
